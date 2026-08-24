@@ -12,6 +12,7 @@
 
 #save the name of the sample (taken from samples.txt) for each job launched in the array
 sample=$(sed -n "${SLURM_ARRAY_TASK_ID}p" samples.txt)
+threads=$SLURM_CPUS_PER_TASK
 
 data_path=$1
 output_path=$2
@@ -27,5 +28,5 @@ echo "FastQC on: " $sample
 
 fastqc \
 	-o $output_path \
-	-t 4 \
+	-t $threads \
 	$sample1 $sample2 \
