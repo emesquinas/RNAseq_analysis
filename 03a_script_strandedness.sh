@@ -19,6 +19,7 @@ cDNA_file=$4
 
 cd $output_path # move the output folder (cause it will create a results folder there)
 
-module load kallisto #needed to run the tool
+#load the tool
+module load cesga/2020 gcccore/system kallisto/0.46.1
 
 check_strandedness --gtf $GTF_file --transcripts $cDNA_file --reads_1 $data_path'/'$sample'/'$sample'_1.fq.gz' --reads_2 $data_path'/'$sample'/'$sample'_2.fq.gz'

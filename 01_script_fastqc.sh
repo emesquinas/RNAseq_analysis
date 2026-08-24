@@ -16,7 +16,8 @@ sample=$(sed -n "${SLURM_ARRAY_TASK_ID}p" samples.txt)
 data_path=$1
 output_path=$2
 
-module load fastqc
+#load tool
+module load fastqc/0.12.1
 
 sample1=$data_path''$sample'/'$sample'_1.fq.gz'
 sample2=$data_path''$sample'/'$sample'_2.fq.gz'

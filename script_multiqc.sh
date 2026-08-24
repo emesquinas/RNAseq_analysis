@@ -13,7 +13,8 @@
 output_path=$1
 results_path=$2
 
-module load multiqc
+#load tool
+module load multiqc/1.24.1-python-3.9.9
 
 multiqc -o $output_path $results_path
 
