@@ -18,8 +18,15 @@ output_path=$aligned_path'/'$sample'/Counts/Raw/'
 mkdir -p $output_path
 
 #remove the first 5 files of the file $sample_ReadsPerGene.out.tab (tail -n +5) and keep the first and fourth column of the same file.
-#the fourth column is for reverse
 
+#Note about the "ReadsPerGene.out.tab" file
+#column 1: gene ID
+#column 2: counts for unstranded RNA-seq
+#column 3: counts for the 1st read strand aligned with RNA (htseq-count option -s yes
+#column 4: counts for the 2nd read strand aligned with RNA (htseq-count option -s reverse)
+#Select the output according to the strandedness of your data. 
+
+#Take the reverse column
 tail -n +5 $aligned_path'/'$sample'/'$sample'_ReadsPerGene.out.tab' | cut -f 1,4 > $output_path'tmp.txt'
 
 # add a header: GeneID and $sample
