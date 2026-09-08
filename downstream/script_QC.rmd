@@ -1,0 +1,124 @@
+---
+title: "QC"
+author: "Eva María Esquinas Román"
+date: "2026-09-03"
+output: html_document
+---
+
+```{r, setup}
+#set up here your working path
+knitr::opts_knit$set(root.dir = '')
+```
+
+
+```{r}
+library(dplyr)
+library(pheatmap)
+library(ggrepel)
+library(ggplot2)
+```
+
+# DATA
+
+## VST COUNTS
+
+```{r}
+vstCounts <- read.csv("Output/Genome/vstCountsDESeq2.csv", sep="\t")
+#remove duplicate ensembl ids (if any)
+vstCounts <- subset(vstCounts, !duplicated(vstCounts$ensembl_gene_id))
+rownames(vstCounts) <- vstCounts$ensembl_gene_id
+vstCounts <- vstCounts %>% dplyr::select(-c("ensembl_gene_id"))
+```
+
+## METADATA
+```{r}
+metadata <- read.table("Data/Metadata.txt", header=T, sep = "\t", stringsAsFactors = T)
+rownames(metadata) <- metadata$Sample
+```
+
+
+# Calculate PCA
+```{r}
+set.seed(92026)
+#calculate variance in rows and subset the 500 most variable genes
+vst_mat <- as.matrix(vstCounts)
+vars <- apply(vst_mat, 1, var)
+top500 <- order(vars, decreasing = TRUE)[1:500]
+vstCounts_top500 <- vst_mat[top500, ]
+
+#calculate PCA
+pca <- prcomp(t(vstCounts_top500), scale. = FALSE)
+
+# Variance of each PC (eigenvalues)
+eigenvalues <- pca$sdev^2
+
+# Percentage of variance explained by each component
+pca_pct <- eigenvalues / sum(eigenvalues) * 100
+
+# Round percentages
+pca_pct <- round(pca_pct)
+
+# Results dataframe
+pca_df <- data.frame(
+  PC1 = pca$x[, 1],
+  PC2 = pca$x[, 2],
+  Sample = rownames(pca$x)
+)
+
+pca_df <- merge(pca_df, metadata)
+
+set.seed(NULL)
+```
+
+
+# Plots
+
+## CONDITION
+```{r}
+condition_colors <- c("ConditionX"="#D55E00", "Control"="#0000bb")
+
+png("Output/DGE/QC/PCA_byCondition.png", width=12, height=8, res=600, units="in")
+
+ggplot(pca_df, aes(x=PC1, y=PC2, color=Condition, label=Sample)) +
+  geom_point(size=3.8, alpha=0.9) +
+  geom_text_repel(color="black", bg.color="white", bg.r=0.12,
+                  size=3.1, fontface="italic",
+                  box.padding=0.55, point.padding=0.4,
+                  max.overlaps=30, segment.color="grey50",
+                  segment.size=0.35, show.legend=FALSE, seed=99) +
+    scale_color_manual(values=condition_colors, name="Condition") +
+  labs(title    = "PCA",
+       subtitle = "Top 500 most variable genes (VST-normalized data)", 
+       x = paste0("PC1 (", pca_pct[1], "% variance)"),
+       y = paste0("PC2 (", pca_pct[2], "% variance)")) +
+  theme_bw(base_size=12) +
+  theme(plot.title    = element_text(face="bold", size=13),
+        plot.subtitle = element_text(size=10, color="grey40"),
+        legend.title  = element_text(face="bold", size=10),
+        panel.grid.minor = element_blank())
+
+dev.off()
+```
+
+You can plot each variable of your metadata just changing: Condition (to change the column name from metadata), values (to put a new palette) and name (to modify the legend title)
+
+
+# Hierarchical clustering heatmap
+
+```{r}
+ann_colors <- list(Condition = c("ConditionX" ="#f1a3a1", "Control"="#009E73"))
+
+vst_cor <- cor(vstCounts)
+png("Output/Genome/DGE/QC/CorrelationHeatmap.png", width = 12, height = 10, units = "in", res=600)
+pheatmap(vst_cor, annotation_col =  metadata |> dplyr::select(Condition), annotation_colors = ann_colors)
+dev.off()
+
+```
+
+
+```{r}
+RsessionInfo <- sessionInfo()
+save.image("Output/Genome/DGE/QC/Environment_QC.RData")
+```
+
+

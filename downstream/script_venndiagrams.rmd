@@ -1,0 +1,110 @@
+---
+title: "Venn diagrams"
+author: "Eva María Esquinas Román"
+date: "2026-09-08"
+output: html_document
+---
+
+```{r, setup}
+knitr::opts_knit$set(root.dir = '')
+```
+
+
+```{r}
+library(dplyr)
+library(writexl)
+library(ggplot2)
+library(venndir) #type 1: venndir
+library(ggVennDiagram) #type 2: ggvenndiagram
+```
+
+# DATA
+
+```{r}
+metadata <- read.csv("Data/Metadata.txt", sep="\t")
+rownames(metadata) <- metadata$Sample
+```
+
+```{r}
+DGE_Data_X <- read.csv("Output/DGE_shrinkageX_sig.csv", sep="\t")
+
+DGE_Data_Y <- read.csv("Output/DGE_shrinkageY_sig.csv", sep="\t")
+```
+
+
+# VENN DIAGRAMS
+
+## TYPE 1 (venndirr - with directional arrows)
+
+```{r}
+vector_DataX <- ifelse(DGE_Data_X$Expression == "UP", 1, -1)
+names(vector_DataX) <- DGE_Data_X$gene_id
+
+vector_DataY <- ifelse(DGE_Data_Y$Expression == "UP", 1, -1)
+names(vector_DataY) <- DGE_Data_Y$gene_id
+
+
+png("Output/Venndiagram_sigDEG.png", width=12, height=8, res=600, units="in")
+
+venndir(list("Data X" = vector_DataX, 
+             "Data Y" = vector_DataY),
+        overlap_type="each", font_cex=1.2,
+        set_colors=c("#bfbf7f","#ff7f7f"),
+        poly_alpha = 1,
+        label_style="basic"
+)
+dev.off()
+```
+
+
+## TYPE 2 (ggVennDiagram)
+
+```{r}
+comparison <- list("DATA X" = DGE_Data_X$gene_id,
+                   "DATA Y" = DGE_Data_Y$gene_id)
+
+ggVennDiagram(comparison, label_alpha = 0, set_size = 3) +
+  scale_fill_gradient(low = "#F0F0FF", high = "#ca0020") +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "none") 
+```
+
+
+
+# LISTS
+
+```{r}
+common_genes <- inner_join(x=DGE_Data_X, y=DGE_Data_Y, by=c("gene_id"), suffix = c("__dataX", "__dataY"))
+```
+
+```{r}
+#get list
+unique_DATA_X <- setdiff(x = DGE_Data_X$gene_id, y = DGE_Data_Y$gene_id)
+#get all the remaining info/columns relative to the list
+unique_DATA_X <- subset(DGE_Data_X, DGE_Data_X$gene_id %in% unique_DATA_X)
+```
+
+```{r}
+#get list
+unique_DATA_Y <- setdiff(y = DGE_Data_X$gene_id, x = DGE_Data_Y$gene_id)
+#get all the remaining info/columns relative to the list
+unique_DATA_Y <- subset(DGE_Data_Y, DGE_Data_Y$gene_id %in% unique_DATA_Y)
+```
+
+
+```{r}
+write_xlsx(common_genes, path="Output/Common_genes.xlsx")
+write.table(common_genes, file="Output/Common_genes.csv", sep="\t", row.names = F)
+
+write_xlsx(unique_DATA_X, path="Output/UniqueGenes_DataX.xlsx")
+write.table(unique_DATA_X, file="Output/UniqueGenes_DataX.csv", sep="\t", row.names = F)
+
+write_xlsx(unique_DATA_Y, path="Output/UniqueGenes_DataY.xlsx")
+write.table(unique_DATA_Y, file="Output/UniqueGenes_DataY.csv", sep="\t", row.names = F)
+```
+
+
+```{r}
+RSessionInfo <- sessionInfo()
+save.image("Output/Environment_VennDiagrams.RData")
+```
