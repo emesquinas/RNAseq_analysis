@@ -56,6 +56,13 @@ venndir(list("Data X" = vector_DataX,
 dev.off()
 ```
 
+### Without arrows
+```{r}
+comparison <- list("DATA X" = DGE_Data_X$gene_id,
+                   "DATA Y" = DGE_Data_Y$gene_id)
+venndir(comparison)
+```
+
 
 ## TYPE 2 (ggVennDiagram)
 
