@@ -1,0 +1,108 @@
+---
+title: "Heatmaps"
+author: "Eva María Esquinas Román"
+date: "2026-09-11"
+output: html_document
+---
+
+```{r, setup}
+knitr::opts_knit$set(root.dir = "")
+```
+
+
+```{r}
+library(dplyr)
+library(writexl)
+library(ggplot2)
+library(ComplexHeatmap)
+```
+
+# DATA
+```{r}
+metadata <- read.csv("Data/Metadata.txt", sep="\t")
+rownames(metadata) <- metadata$Sample
+metadata <- metadata %>% dplyr::select(Condition)
+
+vstData <- read.csv("Output/Genome/vstCountsDESeq2.csv", sep="\t")
+rownames(vstData) <- vstData$ensembl_gene_id
+#put the same order of the samples as it appears in the metadata
+vstData <- vstData %>% dplyr::select(rownames(vstData))
+```
+
+# HEATMAPS
+
+```{r}
+breaksList = seq(-2, 2, by = 1)
+palette <- c("#002c92", "#67a9cf", "#f7f7f7", "#ef8a62", "#a10000")
+
+annotation_color <- list(Condition = c("ConditionX" = "#af242f",
+                         "Control" = "#000071"))
+
+```
+
+
+```{r}
+png("Output/Genome/Plots/Heatmap.png", width=10, height=10, res=600, units="in")
+
+p <- pheatmap(mat = as.matrix(vstData),
+                         color = circlize::colorRamp2(colors = palette, breaks = breaksList),
+                         legend_breaks = breaksList,
+                         fontsize_row = 8,fontsize_col = 8, 
+                         angle_col = "315", fontsize = 8,
+                         cluster_cols = T,
+                         cluster_rows = T,
+                         annotation_col = metadata,
+                         annotation_colors = annotation_color,
+                         scale = "row", border_color = NA,
+                         show_rownames = FALSE,
+                         heatmap_legend_param = list(title="Row Z-Score"), 
+                         main = "", row_title="DE genes")
+
+# join both legends (Z-score + Condition) in a row instead of having them horizontally
+p <- draw(
+    p,
+    merge_legends = TRUE,
+    heatmap_legend_side = "right"
+)
+print(p)
+
+dev.off()
+
+print(p)
+```
+
+```{r}
+png("Output/Genome/Plots/Heatmap_withoutcolnames.png", width=10, height=10, res=600, units="in")
+
+p <- pheatmap(mat = as.matrix(vstData),
+                         color = circlize::colorRamp2(colors = palette, breaks = breaksList),
+                         legend_breaks = breaksList,
+                         fontsize_row = 8,fontsize_col = 8, 
+                         angle_col = "315", fontsize = 8,
+                         cluster_cols = T,
+                         cluster_rows = T,
+                         annotation_col = metadata,
+                         annotation_colors = annotation_color,
+                         scale = "row", border_color = NA,
+                         show_rownames = FALSE, #if you want the genes to appear, change to "TRUE"
+                         show_colnames = FALSE,
+                         heatmap_legend_param = list(title="Row Z-Score"), 
+                         main = "", row_title="DE genes")
+# join both legends (Z-score + Condition) in a row instead of having them horizontally
+p <- draw(
+    p,
+    merge_legends = TRUE,
+    heatmap_legend_side = "right"
+)
+print(p)
+
+dev.off()
+
+print(p)
+```
+
+```{r}
+RSessionInfo <- sessionInfo()
+save.image("Output/Genome/Plots/Environment_Heatmaps.RData")
+```
+
