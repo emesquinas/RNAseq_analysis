@@ -1,0 +1,125 @@
+---
+title: "Volcano Plots"
+author: "Eva María Esquinas Román"
+date: "2026-10-01"
+output: html_document
+---
+
+```{r, setup}
+knitr::opts_knit$set(root.dir = '')
+```
+
+
+```{r}
+library(dplyr)
+library(ggrepel) #volcano plot
+library(scales) #pretty_breaks
+```
+
+## FUNCTIONS
+
+```{r}
+biostatsquid_theme <- function() {
+  theme_classic(base_size = 20) +
+    theme(
+      axis.title.y = element_text(face = "bold", margin = margin(0, 20, 0, 0), size = rel(1.1), color = 'black'),
+      axis.title.x = element_text(hjust = 0.5, face = "bold", margin = margin(20, 0, 0, 0), size = rel(1.1), color = 'black'),
+      plot.title = element_text(hjust = 0.5)
+    )
+}
+
+MyVolcanoPlt <- function(df, log2FC_col, padj_col, Expression_col, Genes_col ="", colorsPlot, title_plot) {
+  
+  x_limits <- range(df[[log2FC_col]], na.rm = TRUE)
+  x_limits <- x_limits + c(-1, 1)
+
+  p <- ggplot(data = df, aes(x = !!sym(log2FC_col), y = -log10(!!sym(padj_col)), 
+                            col = !!sym(Expression_col), label = !!sym(Genes_col))) +
+  geom_point() + 
+  geom_text_repel(show.legend = FALSE, max.overlaps = Inf) +
+  scale_color_manual(values = colorsPlot) + 
+  geom_vline(xintercept = c(-0.58, 0.58), col = "gray", linetype = 'dashed') +
+  labs(x = expression("log"[2]*"FC"), y = expression("-log"[10]*"padj.value")) +
+  scale_x_continuous(
+    breaks = pretty_breaks(n = 8),
+    labels = label_number(accuracy = NULL) #no decimals
+  ) +
+  coord_cartesian(xlim = x_limits) +
+  geom_hline(yintercept = -log10(0.05), col = "gray", linetype = 'dashed') +
+  ggtitle(title_plot) +
+  biostatsquid_theme()
+  
+  return(p)
+}
+```
+
+```{r}
+manual_scale_colors <- c("DOWN" = "#23507e", "NS" = "grey", "UP" = "#bb0c00")
+```
+
+
+# DATA
+
+```{r}
+DGE_results <- read.csv("your_dge_results.csv", sep="\t")
+```
+
+It is necessary that your data contain at least one column named as "Expression" that specifies the regulation of the gene: up, down or NS (not significant).
+
+If you already have this column, you can skip it.
+
+```{r}
+DGE_results$Expression <- ""
+
+DGE_results$Expression[DGE_results$padj <= 0.05 & DGE_results$log2FoldChange > 0.58] <- "UP"
+DGE_results$Expression[DGE_results$padj <= 0.05 & DGE_results$log2FoldChange < -0.58] <- "DOWN"
+DGE_results$Expression[DGE_results$Expression == ""] <- "NS"
+DGE_results$Expression <- as.factor(DGE_results$Expression)
+```
+
+Besides, if you want to include the name of the genes, you should create another extra column:
+
+```{r}
+DGE_results$GeneLabel <- ""
+#put ENSID if there is not gene symbol
+DGE_results$hgnc_symbol[is.na(DGE_results$hgnc_symbol)] <- DGE_results$ensembl_gene_id[is.na(DGE_results$hgnc_symbol)]
+```
+
+```{r}
+top10_up_genes <- DGE_results %>%
+  filter(Expression == "UP") %>% #filter those up
+  arrange(desc(log2FoldChange)) %>% #descending order
+  slice_head(n = 10) %>% #top 10
+  pull(hgnc_symbol) #return gene name
+
+top10_down_genes <- DGE_results %>%
+  filter(Expression == "DOWN") %>% #filter those down
+  arrange((log2FoldChange)) %>% #descending order not necessary when taking negatives
+  slice_head(n = 10) %>% #top 10
+  pull(hgnc_symbol) #return gene name
+
+#add label to those genes that are up / down. If they are up/down, save the name. If not, leave it empty.
+DGE_results$GeneLabel <- ifelse(DGE_results$hgnc_symbol %in% c(top10_up_genes, top10_down_genes),
+                                 DGE_results$hgnc_symbol, "")
+```
+
+
+# VOLCANO PLOT
+
+```{r}
+png(paste0(OutputPath, "VolcanoPlot_DGE_top10_Log2FC.png"), width = 16, height = 10, res=600, units="in")
+
+  p <- MyVolcanoPlt(df = DGE_results, log2FC_col = "log2FoldChange", padj_col = "padj", Expression_col="Expression", Genes_col="GeneLabel", colorsPlot = manual_scale_colors, title_plot = "")
+  print(p)
+  
+dev.off()
+```
+
+
+# SESSION INFO
+```{r}
+RsessionInfo <- sessionInfo()
+save.image("Environment_VolcanoPlots.RData")
+```
+
+
